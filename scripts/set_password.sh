@@ -2,6 +2,18 @@
 
 USERNAME=admin
 
+# Wait for Harvester
+echo "-- Wait for Harvester"
+
+while true; do
+  status=$(curl --write-out '%{http_code}' -skL --output /dev/null https://$HOST)
+  if [ "$status" -eq 200 ]; then
+    sleep 10
+    break
+  fi
+  sleep 5
+done
+
 #Get Token
 echo "-- Get token"
 BOOTSTRAP_TOKEN=$(curl -sk \

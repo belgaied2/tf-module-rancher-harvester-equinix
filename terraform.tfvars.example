@@ -1,6 +1,0 @@
-ssh_key              = ""
-auth_token           = ""
-ssh_private_key_file = ""
-
-harvester_password = ""
-rancher_password = ""

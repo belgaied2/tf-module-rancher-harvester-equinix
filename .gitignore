@@ -1,4 +1,5 @@
-.env
+.*env
+.workload_cl_env
 .terraform
 .terraform*
 terraform.tfstate*
