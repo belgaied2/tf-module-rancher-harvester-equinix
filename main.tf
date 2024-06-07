@@ -25,7 +25,6 @@ module "harvester_cluster" {
   plan              = "m3.small.x86"
   api_key           = var.auth_token
   use_cheapest_metro= false
-  num_of_public_ips = 1
   num_of_vlans = var.num_of_vlans
 }
 
