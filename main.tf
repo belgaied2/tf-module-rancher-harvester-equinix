@@ -13,7 +13,7 @@ module "harvester_cluster" {
   }
 
   count             = var.cluster_count
-  source            = "../terraform-harvester-equinix"
+  source            = "./modules/terraform-harvester-equinix"
   harvester_version = var.harvester_version
   node_count        = var.node_count
   project_name      = var.project_name
