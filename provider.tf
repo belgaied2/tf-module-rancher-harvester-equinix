@@ -12,6 +12,14 @@ terraform {
       source  = "harvester/harvester"
       version = "0.6.4"
     }
+    cloudflare = {
+      source = "cloudflare/cloudflare"
+      version = "4.34.0"
+    }
+    kubernetes = {
+      source = "hashicorp/kubernetes"
+      version = "2.30.0"
+    }
   }
 }
 
@@ -37,3 +45,15 @@ provider "rancher2" {
   access_key = var.rancher_access_key
   secret_key = var.rancher_secret_key
 }
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+} 
+
+# provider "harvester" {
+#   kubeconfig = data.local_file.harvester_kubeconfig[0].content != ""? "${path.module}/../${var.hostname_prefix}$0-rke2.yaml" : "${path.module}/../${var.hostname_prefix}0-rke2.yaml"
+# }
+
+# provider "kubernetes" {
+#   config_path  = data.local_file.harvester_kubeconfig[0].content != ""? "${path.module}/../${var.hostname_prefix}$0-rke2.yaml" : "${path.module}/../${var.hostname_prefix}0-rke2.yaml"
+# }

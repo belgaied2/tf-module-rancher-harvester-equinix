@@ -91,3 +91,46 @@ variable "rancher_password" {
   type        = string
   description = "Rancher Password for Admin User"
 }
+
+variable "harvester_version" {
+  description = "Version of Harvester to deploy"
+  type        = string
+  default = "v1.2.1"
+}
+
+variable "num_of_vlans" {
+  description = "Number of VLANs to create"
+  type        = number
+  default = 1
+  
+}
+
+variable "cloudflare_api_token" {
+  description = "Cloudflare API Token"
+  type        = string
+  sensitive = true
+  
+}
+
+variable "rancher_letsencrypt_email" {
+  description = "Email to use for Let's Encrypt"
+  type        = string
+  
+}
+
+variable "ssh_key_name" {
+  description = "Name of the SSH key"
+  type        = string
+}
+
+variable "ssh_public_key" {
+  description = "Public SSH Key"
+  type        = string
+}
+
+variable "additional_runcmd_data" {
+  description = "Additional runcmd data for the Router VM"
+  type        = string
+  default = ""
+  
+}

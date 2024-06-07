@@ -58,7 +58,8 @@ spec:
           chart: rancher
           version: {{ .Values.rancherVersion }}
           set:
-            ingress.tls.source: rancher
+            ingress.tls.source: letsEncrypt
+            letsEncrypt.email: ${rancher_letsencrypt_email}
             hostname: {{ .Values.hostname }}
             replicas: 1
             global.cattle.psp.enabled: "false"

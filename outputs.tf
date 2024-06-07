@@ -7,9 +7,17 @@ output "harvester_url" {
 #}
 
 output "rancher_token" {
-  value = data.external.get_token.result.token
+  value = [ for token_response in data.http.get_token : jsondecode(token_response.response_body).token ]
 }
 
 output "rancher_url" {
-  value =  "https://${local.rancher_host}"
+  value =  [ for host in local.rancher_host : "https://${host}" ]
+}
+
+output "gateway_public_subnet" {
+  value = data.equinix_metal_reserved_ip_block.public_subnet[*].cidr_notation
+}
+
+output "gateway_private_subnet" {
+  value = data.equinix_metal_reserved_ip_block.metal_gateway_subnet[*].cidr_notation
 }
