@@ -8,18 +8,13 @@ locals {
 
 module "harvester_cluster" {
 
-  providers = {
-    rancher2 = rancher2.harvester
-  }
-
-  count             = var.cluster_count
   source            = "./modules/terraform-harvester-equinix"
   harvester_version = var.harvester_version
   node_count        = var.node_count
   project_name      = var.project_name
   metro             = var.metro
   ssh_key           = var.ssh_key
-  hostname_prefix   = "${var.hostname_prefix}${count.index}"
+  hostname_prefix   = "${var.hostname_prefix}${var.cluster_number}"
   spot_instance     = true
   max_bid_price     = 0.15
   plan              = "m3.small.x86"
@@ -33,8 +28,7 @@ data "equinix_metal_project" "project_id" {
 }
 
 data "local_file" "harvester_kubeconfig" {
-  count = var.cluster_count
-  filename = "${path.module}/../${var.hostname_prefix}${count.index}-rke2.yaml"
+  filename = "${path.module}/../${var.hostname_prefix}${var.cluster_number}-rke2.yaml"
 
   depends_on = [ null_resource.kubeconfig ]
   
@@ -42,10 +36,9 @@ data "local_file" "harvester_kubeconfig" {
 
 resource "null_resource" "kubeconfig" {
 
-  count = var.cluster_count
 
   provisioner "local-exec" {
-    command = "NAME=${var.hostname_prefix}${count.index} IP=${module.harvester_cluster[count.index].public_ips[0]} SSH_PRIVATE_KEY_FILE=${var.ssh_private_key_file} scripts/get_kubeconfig.sh"
+    command = "NAME=${var.hostname_prefix}${var.cluster_number} IP=${module.harvester_cluster.public_ips[0]} SSH_PRIVATE_KEY_FILE=${var.ssh_private_key_file} scripts/get_kubeconfig.sh"
   }
 
   provisioner "local-exec" {
@@ -56,14 +49,13 @@ resource "null_resource" "kubeconfig" {
 
 resource "null_resource" "set_password" {
 
-  count = var.cluster_count
 
   triggers = {
-    harvester_url = module.harvester_cluster[count.index].harvester_url
+    harvester_url = module.harvester_cluster.harvester_url
   }
 
   provisioner "local-exec" {
-    command = "HOST=${replace(replace(module.harvester_cluster[count.index].harvester_url,"https://", ""),"/","")} BOOTSTRAP_PASSWORD=${var.bootstrap_password} NEW_PASSWORD=${var.harvester_password} scripts/set_password.sh"
+    command = "HOST=${replace(replace(module.harvester_cluster.harvester_url,"https://", ""),"/","")} BOOTSTRAP_PASSWORD=${var.bootstrap_password} NEW_PASSWORD=${var.harvester_password} scripts/set_password.sh"
   }
 
   depends_on = [null_resource.kubeconfig]
@@ -72,20 +64,18 @@ resource "null_resource" "set_password" {
 
 module "create_vcluster_namespace" {
   source          = "./modules/apply_manifest"
-  count           = var.cluster_count
-  kubeconfig_file = "${path.module}/../${var.hostname_prefix}${count.index}-rke2.yaml"
+  kubeconfig_file = "${path.module}/../${var.hostname_prefix}${var.cluster_number}-rke2.yaml"
   manifest        = templatefile("${path.module}/templates/rancher-vcluster-namespace.yaml.tmpl", {})
   
   depends_on      = [null_resource.set_password]
 }
 
 module "create_vcluster" {
-  count = var.cluster_count
 
   source          = "./modules/apply_manifest"
-  kubeconfig_file = "${path.module}/../${var.hostname_prefix}${count.index}-rke2.yaml"
+  kubeconfig_file = "${path.module}/../${var.hostname_prefix}${var.cluster_number}-rke2.yaml"
   manifest = templatefile("${path.module}/templates/rancher-vcluster.yaml.tmpl", {
-    rancher_hostname           = local.rancher_host[count.index],
+    rancher_hostname           = local.rancher_host
     rancher_bootstrap_password = var.rancher_bootstrap_password
     rancher_letsencrypt_email = var.rancher_letsencrypt_email
   })
@@ -94,15 +84,14 @@ module "create_vcluster" {
 
 resource "null_resource" "set_password_rancher" {
 
-  count = var.cluster_count
 
   triggers = {
-    rancher_host = local.rancher_host[count.index]
+    rancher_host = local.rancher_host
   
   }
 
   provisioner "local-exec" {
-    command = "HOST=${local.rancher_host[count.index]} BOOTSTRAP_PASSWORD=${var.rancher_bootstrap_password} NEW_PASSWORD=${var.rancher_password} scripts/set_password_rancher.sh"
+    command = "HOST=${local.rancher_host} BOOTSTRAP_PASSWORD=${var.rancher_bootstrap_password} NEW_PASSWORD=${var.rancher_password} scripts/set_password_rancher.sh"
   }
 
   depends_on = [module.create_vcluster]
@@ -116,10 +105,8 @@ resource "null_resource" "set_password_rancher" {
 
 data "http" "get_token" {
 
-  count = var.cluster_count
-
   insecure = true
-  url = "https://${local.rancher_host[count.index]}/v3-public/localProviders/local?action=login"
+  url = "https://${local.rancher_host}/v3-public/localProviders/local?action=login"
   request_body = "{\"username\": \"admin\", \"password\":\"${var.rancher_password}\"}"
   method = "POST"
   request_headers = {
@@ -132,15 +119,13 @@ data "http" "get_token" {
 
 resource "null_resource" "update_server_url" {
   
-  count = var.cluster_count
-
     triggers = {
-    rancher_host = local.rancher_host[count.index]
+    rancher_host = local.rancher_host
   
   }
 
   provisioner "local-exec" {
-    command = "RANCHER_URL=https://${local.rancher_host[count.index]} TOKEN=${jsondecode(data.http.get_token[count.index].response_body).token} scripts/update_server_url.sh"
+    command = "RANCHER_URL=https://${local.rancher_host} TOKEN=${jsondecode(data.http.get_token.response_body).token} scripts/update_server_url.sh"
 
   }
 }
@@ -148,11 +133,9 @@ resource "null_resource" "update_server_url" {
 module "import_harvester" {
   source          = "./modules/rancher_import_harvester"
   
-  count = var.cluster_count
-
-  rancher_token = local.rancher_token[count.index]
-  rancher_url      = "https://${local.rancher_host[count.index]}" 
-  harvester_config_path = "${path.module}/../${var.hostname_prefix}${count.index}-rke2.yaml"
+  rancher_token = local.rancher_token
+  rancher_url      = "https://${local.rancher_host}" 
+  harvester_config_path = "${path.module}/../${var.hostname_prefix}${var.cluster_number}-rke2.yaml"
   depends_on = [ null_resource.update_server_url ]
 }
 

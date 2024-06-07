@@ -58,12 +58,6 @@ variable "ssh_private_key_file" {
   type        = string
 }
 
-variable "cluster_count" {
-  default     = 1
-  description = "Amount of cluster to provision"
-  type        = number
-}
-
 variable "hostname_prefix" {
   default     = "harvester-cl"
   description = "hostname prefix"
@@ -118,19 +112,8 @@ variable "rancher_letsencrypt_email" {
   
 }
 
-variable "ssh_key_name" {
-  description = "Name of the SSH key"
-  type        = string
-}
-
-variable "ssh_public_key" {
-  description = "Public SSH Key"
-  type        = string
-}
-
-variable "additional_runcmd_data" {
-  description = "Additional runcmd data for the Router VM"
-  type        = string
-  default = ""
+variable "cluster_number" {
+  description = "Cluster number, mostly used as a suffix for the hostname"
+  type        = number
   
 }

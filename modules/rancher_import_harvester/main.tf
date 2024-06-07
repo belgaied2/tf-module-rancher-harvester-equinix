@@ -24,6 +24,12 @@ data "http" "create_imported_harvester" {
   insecure = true
 }
 
+resource "time_sleep" "wait_get_cluster_object" {
+  depends_on = [data.http.create_imported_harvester]
+  create_duration = "10s"
+  
+}
+
 data "http" "get_cluster_object" {
   url = "${var.rancher_url}/v3/clusters?name=harvester"
 
@@ -32,7 +38,7 @@ data "http" "get_cluster_object" {
     "Authorization" = "Bearer ${var.rancher_token}"
   }
   insecure = true
-  depends_on = [ data.http.create_imported_harvester ]
+  depends_on = [ time_sleep.wait_get_cluster_object ]
 }
 
 
