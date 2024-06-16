@@ -1,0 +1,205 @@
+# LAB Information and Instructions  
+
+This repository is created for the SUSECON 2024 participants of the CAPI workshop (TUTORIAL-1111).
+
+| Information | Value |
+| --- | --- |
+| Rancher URL | https://${rancher_hostname} |
+| Rancher Web UI Username | admin |
+| Rancher Password | `${rancher_password}` | 
+%{ for i in range(node_count) }| Harvester Node ${i+1} IP | ${node_ips[i]} | %{ endfor }
+| All Nodes SSH User | rancher |
+| All Nodes SSH Password | `${nodes_ssh_password}` |
+| Router VM Public IP | ${router_vm_public_ip} |
+| Router VM SSH User | sles |
+| Router VM SSH Password | `suse1234` |
+
+## Steps
+
+### Installing Rancher Turtles
+
+- Check if Harvester is `Active` in the Virtualization Management view.
+![harvester_active.png](./screenshots/harvester_active.png)
+* Add Rancher Turtles Helm Repo:
+
+	* click on icon for the **local** cluster
+	* Go to the **Apps** menu, and **Repositories** sub-menu
+	* Click on **Create** button
+	![repo_view.png](./screenshots/repo_view.png)
+	* Enter the following:
+	    - **Name**: `turtles`
+	    - **Index URL**: [https://rancher.github.io/turtles](https://rancher.github.io/turtles)
+	- Click on **Create** button
+	![repo_create.png](./screenshots/repo_create.png)
+
+This can also be done using the following command:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: catalog.cattle.io/v1
+kind: ClusterRepo
+metadata:
+  name: turtles
+spec:
+  url: https://rancher.github.io/turtles
+EOF
+``` 
+
+* Wait for the `turtles` repository to have a status of `Active`.
+	![repo_check_turtles_ready.png](./screenshots/repo_check_turtles_ready.png)
+
+**NOTE** : At this time, Rancher Turtles released a new version v0.8.0, already available in Rancher. However, this version comes with various changes including the usage of the API in version `v1beta1`. This causes issues with the current way this lab has been built. Therefore, please on install version **v0.7.0**, else you might have unpredictable issues.
+
+**NOTE 2**: There is a known issue with Rancher Turtles when installing it in a project. Please make sure you keep the default **(None)** in the second step when installing.
+
+*  Install the Turtles App, in version !! **v0.7.0** !!
+	* Go to `Apps` -> `Charts`.
+	- Filter for `turtles`.
+	- Click on the tile `Rancher Turtles - the Cluster API Extension` 
+
+![turtles_chart_view.png](./screenshots/turtles_chart_view.png)
+
+
+* !!! Select version **v0.7.0** !!, we need
+* Click **Install**:
+![turtles_install_1.png](./screenshots/turtles_install_1.png)
+* Click **Next**. Nowm make sure to NOT change the project and keep it to **(None)**
+* and finally **Install**:
+![turtles_install_2.png](./screenshots/turtles_install_2.png)
+
+After that, Rancher will show a log frame showing progress of the Helm installation, make sure to scroll down in the logs window, and wait until you get **SUCCESS** line as shown below:
+![turtles_install_success.png](./screenshots/turtles_install_success.png)
+
+**NOTE**: Sometimes this screen will not show on its own, that's because Rancher Turtles' installation causes deactivation of some Rancher components, which might break the current connexions to the Rancher WebSockets. Please make sure to manually refresh you browser and do the CAPI Provider checks in the next step.
+
+### Checking Base Providers
+Rancher Turtles will automatically install the base requirements for CAPI:
+- CAPI Core Controller v1.4.6
+- CAPI ControlPlane and Bootstrap providers for RKE2
+You can check that by going to **local** Cluster -> Magnifier icon (`Resource Search (Ctrl + K)` label), type in the `Search` field `CAPI` and select **CAPIProviders** in the list:
+![capi_provider_search.png](./screenshots/capi_provider_search.png)
+
+This should show the list of `Active` CAPIProviders, which should include the requirements listed above.
+![capi_provider_view.png](./screenshots/capi_provider_view.png)
+
+Additionally, you might need to check the `Deployments` under the menu `Workloads` and filter on `cluster`, then you should find 4 items as follows:
+![turtles_components_check.png](./screenshots/turtles_components_check.png)
+
+
+### Deploying the Harvester CAPI Infrastructure Provider (CAPHV)
+
+In order to add the Harvester Provider, we will use an existing YAML file on GitHub, which we will deploy using Fleet.
+To do that, click on **Continuous Delivery** icon, then **Git Repos**, then **Add Repository** button:
+![gitrepos_view.png](./screenshots/gitrepos_view.png)
+
+* Give the necessary information for the Git Repo:
+	* **Name**: capiprovider-harvester
+	* **Repository URL**: https://github.com/belgaied2/susecon2024-capi-demo
+	* **Branch Name**: main
+	* After scrolling down, `Add Path` button and then `/capiproviders`
+	* make also sure to select the right namespace in the top right side of the window, it must be **fleet-local**.
+![gitrepo_add_1.png](./screenshots/gitrepo_add_1.png)
+
+Alternatively, you can copy-paster the following:
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: capiprovider-harvester
+  namespace: fleet-local
+spec:
+  branch: main
+  paths:
+    - /capiproviders
+  repo: https://github.com/belgaied2/susecon2024-capi-demo
+  targets:
+    - clusterSelector:
+        matchExpressions:
+          - key: provider.cattle.io
+            operator: NotIn
+            values:
+              - harvester
+EOF
+```
+
+Both the above approaches should show the same results in the **Git Repos** view (make sure to select `fleet-local` namespace)
+![gitrepo_ready_view.png](./screenshots/gitrepo_ready_view.png)
+The the previous view `CAPIProviders` should show 4 providers now, the new one being `harvester-infrastructure` in the `caphv-system` namespace.
+![capi_provider_caphv_ready.png](./screenshots/capi_provider_caphv_ready.png)
+
+**Note**: you might see the `harvester-infrastructure` provider in `Unavailable` state for a while, that's because the installation process takes some time, make sure to wait for a couple of minutes and it should change to the `Ready` state.
+### Generating the cluster manifest
+In order to create a CAPI cluster using Rancher Turtles, we need to create a YAML manifest containing all the necessary resources that are needed. This corresponds to the configuration of our cluster.
+In order to simplify deployment of RKE2 clusters on Harvester, the CAPHV project offers the following [template](https://github.com/rancher-sandbox/cluster-api-provider-harvester/blob/main/templates/cluster-template-rke2.yaml), which contains placeholders in the form of environment variables.
+
+We need the following steps:
+- clone a GitHub repository (optional, only needed for GitOps using Fleet)
+- declare these environment variables
+- use `clusterctl` to generate the final manifest from the above template.
+- git add, git commit and git push the final manifest (optional, only needed for GitOps using Fleet)
+- declare the GitRepo in Fleet (optional, only needed for GitOps using Fleet)
+
+You should have at your disposal a list of commands to execute, [here](./capi-cluster-rc).
+
+You can copy-paste these commands into a terminal that has access to the `clusterctl` command line.
+
+This will populate the above environment variables.
+
+Now, we need to generate the YAML manifest for the cluster. `clusterctl` needs to be available on the Linux machine you are using to push to your GitHub repository (and automatically deployed to the Rancher cluster using Fleet after that).
+
+This is the command that is needed to generate the cluster manifest:
+```bash
+clusterctl generate yaml --from https://github.com/rancher-sandbox/cluster-api-provider-harvester/blob/main/templates/cluster-template-rke2.yaml  > test-rk-cluster.yaml
+```
+
+Now, we push the changes the Git repo:
+```bash
+git add test-rk-cluster.yaml
+git commit -m "My First CAPI cluster in GitOps" 
+git push
+```
+Now, you need to add a GitRepo to Fleet to make it deploy the manifests on Rancher:
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: test-rk-cluster
+  namespace: fleet-local
+spec:
+  branch: main
+  paths:
+    - /templates
+  repo: https://github.com/belgaied2/susecon2024-capi-demo
+  targets:
+    - clusterSelector:
+        matchExpressions:
+          - key: provider.cattle.io
+            operator: NotIn
+            values:
+              - harvester
+EOF
+```
+
+### Monitor the evolution of the cluster creation process
+Now Cluster API will begin creating the cluster, in a multi-step process that can take up to 10 minutes or more.
+
+During this process, you can check the processor by looking at resources instances being created in Rancher, for instance:
+- `More Resources` -> `Cluster Provisioning` -> `CAPI Clusters` 
+- `More Resources` -> `Cluster Provisioning` -> `Machines`
+- `More Resources` -> `Cluster Provisioning` -> `HarvesterMachines`
+
+You can also check out the logs of the different provider controllers:
+| Log type | Where to find them |
+| --- | ---|
+| Logs of the Harvester Infrastructure provider | The pod logs of the `caphv-controller-manager` in the `caphv-system` namespace|
+| Logs of the CAPI Core Controller | The pog logs of the `capi-controller-manager` in the `capi-system` namespace |
+| Logs of the RKE2 ControlPlane Provider | The pod logs of the `rke2-control-plane-controller-manager` in `rke2-control-plane-system` namespace |
+| Logs of the RKE2 Bootstrap Provider | The pod logs of the `rke2-bootstrap-controller-manager` in `rke2-bootstrap-system` namespace |
+
+At the end of the process, you should see the CAPI Cluster `test-rk` in the `example-rke2` namespace gets to the state `Provisioned`, and the cluster should also appeared as a Downstream Cluster in Rancher.
+
+-- END --
+
+

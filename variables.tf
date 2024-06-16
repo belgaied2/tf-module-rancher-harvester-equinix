@@ -113,7 +113,20 @@ variable "rancher_letsencrypt_email" {
 }
 
 variable "cluster_number" {
-  description = "Cluster number, mostly used as a suffix for the hostname"
+  description = "Cluster number"
   type        = number
   
 }
+
+variable "participant_id" {
+  description = "Participant ID, mostly used for GitHub Branch and Rancher Hostname Suffix"
+  type        = string
+  
+}
+
+variable "github_participant_repo" {
+  description = "GitHub Repository for the participant"
+  type        = string
+  
+}
+

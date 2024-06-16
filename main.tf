@@ -1,8 +1,8 @@
 locals {
 
   #rancher_host = format("rancher.%s.nip.io", module.harvester_cluster[0].harvester_vip)
-  rancher_host = cloudflare_record.dns_record_rancher[*].hostname
-  rancher_token = [for token_response in data.http.get_token : jsondecode(token_response.response_body).token]
+  rancher_host = cloudflare_record.dns_record_rancher.hostname
+  rancher_token = jsondecode(data.http.get_token.response_body).token
 }
 
 
@@ -21,7 +21,22 @@ module "harvester_cluster" {
   api_key           = var.auth_token
   use_cheapest_metro= false
   num_of_vlans = var.num_of_vlans
+  cluster_number = var.cluster_number
+#   additional_os_config = <<-EOT
+#   write_files:
+# %{ for i in range(var.num_of_vlans)  }
+#   - path: /etc/sysconfig/network/ifcfg-mgmt.${module.harvester_cluster.vlan_tags[i]}
+#     owner: root:root
+#     permissions: '0644'
+#     content: |
+#       ETHERDEVICE=mgmt-br
+#       BOOTPROTO=dhcp
+#       ONBOOT=yes
+#       VLAN_ID=${module.harvester_cluster.vlan_tags[i]}
+# %{ endfor }
+#   EOT
 }
+
 
 data "equinix_metal_project" "project_id" {
   name = var.project_name
@@ -38,7 +53,7 @@ resource "null_resource" "kubeconfig" {
 
 
   provisioner "local-exec" {
-    command = "NAME=${var.hostname_prefix}${var.cluster_number} IP=${module.harvester_cluster.public_ips[0]} SSH_PRIVATE_KEY_FILE=${var.ssh_private_key_file} scripts/get_kubeconfig.sh"
+    command = "NAME=${var.hostname_prefix}${var.cluster_number} IP=${module.harvester_cluster.public_ips[0]} SSH_PRIVATE_KEY_FILE=${var.ssh_private_key_file} ${path.module}/scripts/get_kubeconfig.sh"
   }
 
   provisioner "local-exec" {
@@ -55,7 +70,7 @@ resource "null_resource" "set_password" {
   }
 
   provisioner "local-exec" {
-    command = "HOST=${replace(replace(module.harvester_cluster.harvester_url,"https://", ""),"/","")} BOOTSTRAP_PASSWORD=${var.bootstrap_password} NEW_PASSWORD=${var.harvester_password} scripts/set_password.sh"
+    command = "HOST=${replace(replace(module.harvester_cluster.harvester_url,"https://", ""),"/","")} BOOTSTRAP_PASSWORD=${var.bootstrap_password} NEW_PASSWORD=${var.harvester_password} ${path.module}/scripts/set_password.sh"
   }
 
   depends_on = [null_resource.kubeconfig]
@@ -91,14 +106,14 @@ resource "null_resource" "set_password_rancher" {
   }
 
   provisioner "local-exec" {
-    command = "HOST=${local.rancher_host} BOOTSTRAP_PASSWORD=${var.rancher_bootstrap_password} NEW_PASSWORD=${var.rancher_password} scripts/set_password_rancher.sh"
+    command = "HOST=${local.rancher_host} BOOTSTRAP_PASSWORD=${var.rancher_bootstrap_password} NEW_PASSWORD=${var.rancher_password} ${path.module}/scripts/set_password_rancher.sh"
   }
 
   depends_on = [module.create_vcluster]
 }
 
 # data "external" "get_token" {
-#   program = ["/bin/bash", "-c","HOST=${local.rancher_host} USERNAME=admin PASSWORD=${var.rancher_password} scripts/get_token_rancher.sh"]
+#   program = ["/bin/bash", "-c","HOST=${local.rancher_host} USERNAME=admin PASSWORD=${var.rancher_password} ${path.module}/scripts/get_token_rancher.sh"]
 
 #   depends_on = [null_resource.set_password_rancher]
 # }
@@ -113,7 +128,7 @@ data "http" "get_token" {
     "Content-Type" = "application/json"
   }
 
-  depends_on = [null_resource.set_password_rancher]
+  depends_on = [null_resource.set_password_rancher, module.harvester_cluster, cloudflare_record.dns_record_rancher]
 
 }
 
@@ -125,7 +140,7 @@ resource "null_resource" "update_server_url" {
   }
 
   provisioner "local-exec" {
-    command = "RANCHER_URL=https://${local.rancher_host} TOKEN=${jsondecode(data.http.get_token.response_body).token} scripts/update_server_url.sh"
+    command = "RANCHER_URL=https://${local.rancher_host} TOKEN=${jsondecode(data.http.get_token.response_body).token} ${path.module}/scripts/update_server_url.sh"
 
   }
 }

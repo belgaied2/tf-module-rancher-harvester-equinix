@@ -1,5 +1,5 @@
 output "harvester_url" {
-  value = module.harvester_cluster[*].harvester_url
+  value = module.harvester_cluster.harvester_url
 }
 
 #output "node_ip" {
@@ -7,17 +7,30 @@ output "harvester_url" {
 #}
 
 output "rancher_token" {
-  value = [ for token_response in data.http.get_token : jsondecode(token_response.response_body).token ]
+  value = data.http.get_token
 }
 
 output "rancher_url" {
-  value =  [ for host in local.rancher_host : "https://${host}" ]
+  value =  local.rancher_host 
 }
 
 output "gateway_public_subnet" {
-  value = data.equinix_metal_reserved_ip_block.public_subnet[*].cidr_notation
+  value = data.equinix_metal_reserved_ip_block.public_subnet.cidr_notation
 }
 
 output "gateway_private_subnet" {
   value = data.equinix_metal_reserved_ip_block.metal_gateway_subnet[*].cidr_notation
+}
+
+output "vlan_ids" {
+  value = module.harvester_cluster.vlan_tags
+}
+
+output "node_ips" {
+  value = module.harvester_cluster.public_ips
+  
+}
+
+output "nodes_ssh_password" {
+  value = module.harvester_cluster.nodes_ssh_password
 }

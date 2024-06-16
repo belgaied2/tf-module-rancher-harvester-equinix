@@ -11,7 +11,7 @@ while true; do
     sleep 10
     break
   fi
-  sleep 5
+  sleep 10
 done
 
 #Get Token
