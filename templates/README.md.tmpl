@@ -4,7 +4,7 @@ This repository is created for the SUSECON 2024 participants of the CAPI worksho
 
 | Information | Value |
 | --- | --- |
-| Rancher URL | https://${rancher_hostname} |
+| Rancher URL | [https://${rancher_hostname}](https://${rancher_hostname}) |
 | Rancher Web UI Username | admin |
 | Rancher Password | `${rancher_password}` | 
 %{ for i in range(node_count) }| Harvester Node ${i+1} IP | ${node_ips[i]} | %{ endfor }
@@ -130,8 +130,10 @@ The the previous view `CAPIProviders` should show 4 providers now, the new one b
 
 **Note**: you might see the `harvester-infrastructure` provider in `Unavailable` state for a while, that's because the installation process takes some time, make sure to wait for a couple of minutes and it should change to the `Ready` state.
 ### Generating the cluster manifest
+For this part of the lab, you will need a CLI tool called `clusterctl` provided by the Cluster API project. If you do not have a machine available with `clusterctl`, you can connect using SSH to the **Router** VM (IP and credentials available in the table at the top of this page).
+
 In order to create a CAPI cluster using Rancher Turtles, we need to create a YAML manifest containing all the necessary resources that are needed. This corresponds to the configuration of our cluster.
-In order to simplify deployment of RKE2 clusters on Harvester, the CAPHV project offers the following [template](https://github.com/rancher-sandbox/cluster-api-provider-harvester/blob/main/templates/cluster-template-rke2.yaml), which contains placeholders in the form of environment variables.
+In order to simplify deployment of RKE2 clusters on Harvester, the CAPHV (Cluster API Provider for Harvester) project offers the following [template](https://github.com/rancher-sandbox/cluster-api-provider-harvester/blob/main/templates/cluster-template-rke2.yaml), which contains placeholders in the form of environment variables.
 
 We need the following steps:
 - clone a GitHub repository (optional, only needed for GitOps using Fleet)
@@ -142,16 +144,19 @@ We need the following steps:
 
 You should have at your disposal a list of commands to execute, [here](./capi-cluster-rc).
 
-You can copy-paste these commands into a terminal that has access to the `clusterctl` command line.
+You can copy-paste these commands into a terminal that has access to the `clusterctl` command line. 
 
 This will populate the above environment variables.
 
-Now, we need to generate the YAML manifest for the cluster. `clusterctl` needs to be available on the Linux machine you are using to push to your GitHub repository (and automatically deployed to the Rancher cluster using Fleet after that).
+Now, we need to generate the YAML manifest for the cluster. `clusterctl` needs to be available on the Linux machine you are using to push to your GitHub repository (and automatically deployed to the Rancher cluster using Fleet after that). If you are not using GitOps, you will need to copy-paste the resulting YAML file into Rancher's `Import YAML` button in the `local` cluster explorer.
+![rancher_import_yaml_button.png](./screenshots/rancher_import_yaml_button.png) 
 
 This is the command that is needed to generate the cluster manifest:
 ```bash
 clusterctl generate yaml --from https://github.com/rancher-sandbox/cluster-api-provider-harvester/blob/main/templates/cluster-template-rke2.yaml  > test-rk-cluster.yaml
 ```
+
+**The following steps are only valid for the GitOps approach:**
 
 Now, we push the changes the Git repo:
 ```bash
