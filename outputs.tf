@@ -2,9 +2,9 @@ output "harvester_url" {
   value = module.harvester_cluster.harvester_url
 }
 
-#output "node_ip" {
-#value = module.harvester_cluster[*].node_ip
-#}
+# output "node_ip" {
+# value = module.harvester_cluster[*].node_ip
+# }
 
 output "rancher_token" {
   value = data.http.get_token

@@ -19,6 +19,7 @@ resource "github_repository_file" "README" {
     nodes_ssh_password = module.harvester_cluster.nodes_ssh_password
     node_count = var.node_count
     router_vm_public_ip = cidrhost(data.equinix_metal_reserved_ip_block.public_subnet.cidr_notation,5)
+    harvester_vip = module.harvester_cluster.harvester_vip
   }) 
   file = "./README.md" 
 }

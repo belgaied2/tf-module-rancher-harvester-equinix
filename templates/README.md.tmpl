@@ -7,7 +7,8 @@ This repository is created for the SUSECON 2024 participants of the CAPI worksho
 | Rancher URL | [https://${rancher_hostname}](https://${rancher_hostname}) |
 | Rancher Web UI Username | admin |
 | Rancher Password | `${rancher_password}` | 
-%{ for i in range(node_count) }| Harvester Node ${i+1} IP | ${node_ips[i]} | %{ endfor }
+%{ for i in range(node_count) }| Harvester Node ${i+1} IP | ${node_ips[i]} | 
+%{ endfor }| Harvester VIP | ${harvester_vip} |
 | All Nodes SSH User | rancher |
 | All Nodes SSH Password | `${nodes_ssh_password}` |
 | Router VM Public IP | ${router_vm_public_ip} |

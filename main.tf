@@ -1,6 +1,6 @@
 locals {
 
-  #rancher_host = format("rancher.%s.nip.io", module.harvester_cluster[0].harvester_vip)
+  # rancher_host = "rancher-cdc.belgai.de"
   rancher_host = cloudflare_record.dns_record_rancher.hostname
   rancher_token = jsondecode(data.http.get_token.response_body).token
 }
