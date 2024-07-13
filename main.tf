@@ -1,6 +1,4 @@
 locals {
-
-  # rancher_host = "rancher-cdc.belgai.de"
   rancher_host = cloudflare_record.dns_record_rancher.hostname
   rancher_token = jsondecode(data.http.get_token.response_body).token
 }
